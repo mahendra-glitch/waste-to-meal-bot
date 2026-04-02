@@ -1,59 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waste-to-Meal Bot</title>
     <style>
-        body { font-family: sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; line-height: 1.6; }
-        input, button { width: 100%; padding: 10px; margin: 10px 0; }
-        #recipeResult { background: #f4f4f4; padding: 15px; border-radius: 8px; margin-top: 20px; display: none; }
-        .lazy-box { display: flex; align-items: center; gap: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; line-height: 1.6; color: #333; }
+        h2 { text-align: center; color: #2e7d32; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #e0e0e0; }
+        input[type="text"] { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; margin: 15px 0; background-color: #2e7d32; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.3s; }
+        button:hover { background-color: #1b5e20; }
+        button:disabled { background-color: #a5d6a7; cursor: not-allowed; }
+        #recipeResult { background: #f9f9f9; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 5px solid #2e7d32; display: none; }
+        .lazy-box { display: flex; align-items: center; gap: 10px; margin: 10px 0; font-size: 14px; }
+        #recipeContent { white-space: pre-wrap; font-size: 15px; }
     </style>
 </head>
 <body>
-    <h2>stewards of the Fridge 🥬</h2>
-    <p>Enter 3 ingredients you need to use up:</p>
-    <input type="text" id="ing1" placeholder="Ingredient 1 (e.g. Spinach)">
-    <input type="text" id="ing2" placeholder="Ingredient 2 (e.g. Eggs)">
-    <input type="text" id="ing3" placeholder="Ingredient 3 (e.g. Tortilla)">
-    
-    <div class="lazy-box">
-        <input type="checkbox" id="lazyMode" style="width: auto;">
-        <label for="lazyMode">Enable "Lazy Mode" (15 mins or less)</label>
-    </div>
 
-    <button onclick="generateRecipe()">Get Recipe</button>
+    <div class="card">
+        <h2>Stewards of the Fridge 🥬</h2>
+        <p style="text-align: center; font-size: 14px;">Stop wasting food. Start cooking.</p>
+        
+        <input type="text" id="ing1" placeholder="Ingredient 1 (e.g. Eggs)">
+        <input type="text" id="ing2" placeholder="Ingredient 2 (e.g. Tomato)">
+        <input type="text" id="ing3" placeholder="Ingredient 3 (e.g. Potato)">
+        
+        <div class="lazy-box">
+            <input type="checkbox" id="lazyMode">
+            <label for="lazyMode">Enable "Lazy Mode" (15 mins or less)</label>
+        </div>
 
-    <div id="recipeResult">
-        <h3 id="recipeTitle"></h3>
-        <p id="recipeContent"></p>
+        <button id="getBtn" onclick="generateRecipe()">Get Recipe</button>
+
+        <div id="recipeResult">
+            <h3 id="recipeTitle" style="margin-top:0;">Chef's Suggestion:</h3>
+            <div id="recipeContent"></div>
+        </div>
     </div>
 
     <script>
         async function generateRecipe() {
-            const API_KEY = "ENTER_YOUR_KEY_HERE";
             const i1 = document.getElementById('ing1').value;
             const i2 = document.getElementById('ing2').value;
             const i3 = document.getElementById('ing3').value;
             const isLazy = document.getElementById('lazyMode').checked;
+            
             const resultDiv = document.getElementById('recipeResult');
+            const contentDiv = document.getElementById('recipeContent');
+            const btn = document.getElementById('getBtn');
 
-            const prompt = `Act as a chef. Create a recipe using: ${i1}, ${i2}, and ${i3}. 
-                            ${isLazy ? "The recipe MUST be 'Lazy Mode': under 15 minutes and simple." : ""}
-                            Format: Title followed by instructions.`;
+            // 1. Validation: Ensure user entered something
+            if(!i1 || !i2 || !i3) {
+                alert("Please enter all 3 ingredients!");
+                return;
+            }
 
-            // Note: In production, use a proxy or backend to keep your API key safe!
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${ENTER_YOUR_KEY_HERE}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-            });
-
-            const data = await response.json();
-            const text = data.candidates[0].content.parts[0].text;
-
-            document.getElementById('recipeTitle').innerText = "Chef's Suggestion:";
-            document.getElementById('recipeContent').innerText = text;
+            // 2. UI Loading State
+            btn.innerText = "Cooking...";
+            btn.disabled = true;
             resultDiv.style.display = "block";
+            contentDiv.innerHTML = "<i>The Chef is thinking of something delicious...</i>";
+
+            try {
+                // 3. FETCH: Calling your Vercel Serverless Function
+                const response = await fetch('/api/generate', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        ingredients: `${i1}, ${i2}, ${i3}`, 
+                        isLazy: isLazy 
+                    })
+                });
+
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                const data = await response.json();
+                
+                // 4. DISPLAY: Extracting text from Gemini's response
+                const text = data.candidates[0].content.parts[0].text;
+                
+                // We use innerHTML because we told the AI to use HTML tags in the backend
+                contentDiv.innerHTML = text;
+
+            } catch (error) {
+                contentDiv.innerHTML = "<span style='color:red;'>Error: Could not reach the Chef. Make sure your API key is set in Vercel.</span>";
+                console.error("Error details:", error);
+            } finally {
+                btn.innerText = "Get Recipe";
+                btn.disabled = false;
+            }
         }
     </script>
 </body>
