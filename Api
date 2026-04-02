@@ -1,18 +1,25 @@
-// /api/generate.js
 export default async function handler(req, res) {
-    const { ingredients, isLazy } = JSON.parse(req.body);
-    const API_KEY = process.env.GEMINI_API_KEY; // This pulls from Vercel's secret settings
+    if (req.method !== 'POST') {
+        return res.status(405).json({ message: 'Method not allowed' });
+    }
 
-    const prompt = `Act as a chef. Create a recipe using: ${ingredients}. 
-                    ${isLazy ? "Must be under 15 mins." : ""}
-                    Format as HTML: <h3>Title</h3><p>Steps...</p>`;
+    const { ingredients, isLazy } = req.body;
+    const API_KEY = process.env.GEMINI_API_KEY;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
+    const prompt = `Act as a professional chef. Create a creative recipe using these ingredients: ${ingredients}. 
+                    ${isLazy ? "The recipe MUST be 'Lazy Mode': under 15 minutes and very simple." : ""}
+                    Format the output nicely using HTML tags like <b> and <br>.`;
 
-    const data = await response.json();
-    res.status(200).json(data);
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+
+        const data = await response.json();
+        res.status(200).json(data);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to fetch from Gemini" });
+    }
 }
