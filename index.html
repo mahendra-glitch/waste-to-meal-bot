@@ -14,18 +14,18 @@
         button:disabled { background-color: #a5d6a7; cursor: not-allowed; }
         #recipeResult { background: #f9f9f9; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 5px solid #2e7d32; display: none; }
         .lazy-box { display: flex; align-items: center; gap: 10px; margin: 10px 0; font-size: 14px; }
-        #recipeContent { white-space: pre-wrap; font-size: 15px; }
+        #recipeContent { font-size: 15px; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <h2>Stewards of the Fridge 🥬</h2>
-        <p style="text-align: center; font-size: 14px;">Stop wasting food. Start cooking.</p>
+        <p style="text-align: center; font-size: 14px;">Powered by Claude AI</p>
         
-        <input type="text" id="ing1" placeholder="Ingredient 1 (e.g. Eggs)">
-        <input type="text" id="ing2" placeholder="Ingredient 2 (e.g. Tomato)">
-        <input type="text" id="ing3" placeholder="Ingredient 3 (e.g. Potato)">
+        <input type="text" id="ing1" placeholder="Ingredient 1">
+        <input type="text" id="ing2" placeholder="Ingredient 2">
+        <input type="text" id="ing3" placeholder="Ingredient 3">
         
         <div class="lazy-box">
             <input type="checkbox" id="lazyMode">
@@ -51,20 +51,17 @@
             const contentDiv = document.getElementById('recipeContent');
             const btn = document.getElementById('getBtn');
 
-            // 1. Validation: Ensure user entered something
             if(!i1 || !i2 || !i3) {
                 alert("Please enter all 3 ingredients!");
                 return;
             }
 
-            // 2. UI Loading State
-            btn.innerText = "Cooking...";
+            btn.innerText = "Chef is Cooking...";
             btn.disabled = true;
             resultDiv.style.display = "block";
-            contentDiv.innerHTML = "<i>The Chef is thinking of something delicious...</i>";
+            contentDiv.innerHTML = "<i>Claude is creating your recipe...</i>";
 
             try {
-                // 3. FETCH: Calling your Vercel Serverless Function
                 const response = await fetch('/api/generate', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -74,19 +71,17 @@
                     })
                 });
 
-                if (!response.ok) throw new Error('Network response was not ok');
-
                 const data = await response.json();
                 
-                // 4. DISPLAY: Extracting text from Gemini's response
-                const text = data.candidates[0].content.parts[0].text;
-                
-                // We use innerHTML because we told the AI to use HTML tags in the backend
-                contentDiv.innerHTML = text;
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Display the text returned from our backend
+                contentDiv.innerHTML = data.text;
 
             } catch (error) {
-                contentDiv.innerHTML = "<span style='color:red;'>Error: Could not reach the Chef. Make sure your API key is set in Vercel.</span>";
-                console.error("Error details:", error);
+                contentDiv.innerHTML = `<span style='color:red;'>Error: ${error.message}. Check Vercel Environment Variables.</span>`;
             } finally {
                 btn.innerText = "Get Recipe";
                 btn.disabled = false;
