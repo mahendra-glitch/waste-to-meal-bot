@@ -1,36 +1,49 @@
 export default async function handler(req, res) {
-    // 1. Safety Check
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
-        // 2. Get data (Adding a fallback in case req.body is a string)
         const data = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
         const { ingredients, isLazy } = data;
         
-        const API_KEY = process.env.GEMINI_API_KEY;
+        // IMPORTANT: Make sure your Vercel Environment Variable is named CLAUDE_API_KEY
+        const CLAUDE_KEY = process.env.CLAUDE_API_KEY;
 
-        // 3. The request to Google
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+        if (!CLAUDE_KEY) {
+            return res.status(500).json({ error: "Claude API Key missing in Vercel Settings" });
+        }
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'x-api-key': CLAUDE_KEY,
+                'anthropic-version': '2023-06-01', 
+                'content-type': 'application/json'
+            },
             body: JSON.stringify({
-                contents: [{ 
-                    parts: [{ 
-                        text: `Context: Zero-waste chef. Ingredients: ${ingredients}. ${isLazy ? "Lazy Mode: under 15 mins." : ""} Return instructions in HTML format.` 
-                    }] 
-                }]
+                model: 'claude-3-5-sonnet-20240620',
+                max_tokens: 1024,
+                messages: [
+                    {
+                        role: 'user',
+                        content: `You are a professional zero-waste chef. 
+                        Create a recipe using only these ingredients: ${ingredients}. 
+                        ${isLazy ? "The recipe MUST be 'Lazy Mode': under 15 minutes." : ""} 
+                        Return the response in clean HTML: <h3>Recipe Title</h3><br><b>Ingredients:</b><ul><li>item</li></ul><b>Steps:</b><ol><li>step</li></ol>`
+                    }
+                ]
             })
         });
 
         const result = await response.json();
 
-        // 4. Send back the answer
-        return res.status(200).json(result);
+        if (result.error) {
+            return res.status(400).json({ error: result.error.message });
+        }
+
+        // Send only the text content back to the frontend
+        return res.status(200).json({ text: result.content[0].text });
 
     } catch (error) {
-        console.error("Server Crash:", error);
         return res.status(500).json({ error: "Server Error", message: error.message });
     }
 }
