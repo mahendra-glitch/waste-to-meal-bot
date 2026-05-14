@@ -27,7 +27,7 @@ export default async function handler(req, res) {
                         content: `You are the executive chef for "Eco Chef". 
                         Based on these ingredients: ${ingredients}, provide 3 unique zero-waste recipe options.
                         
-                        ${isQuick ? "CRITICAL: 'QuickMode' is ACTIVE. All 3 recipes MUST be prepared and cooked in under 15 minutes." : "Provide a variety of cooking styles."} 
+                        ${isQuick ? "CRITICAL: 'Quick Mode' is ACTIVE. All 3 recipes MUST be prepared and cooked in under 15 minutes." : "Provide a variety of cooking styles."} 
                         
                         Format each recipe clearly in HTML using this structure:
                         <div class="recipe-option">
