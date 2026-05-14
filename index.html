@@ -3,39 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Waste-to-Meal Bot</title>
+    <title>Eco Chef | Waste-to-Meal Bot</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; line-height: 1.6; color: #333; }
-        h2 { text-align: center; color: #2e7d32; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #e0e0e0; }
-        input[type="text"] { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; margin: 15px 0; background-color: #2e7d32; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.3s; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; line-height: 1.6; color: #333; background-color: #f4f7f6; }
+        h2 { text-align: center; color: #2e7d32; margin-bottom: 5px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #e0e0e0; }
+        input[type="text"] { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        button { width: 100%; padding: 14px; margin: 15px 0; background-color: #2e7d32; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; }
         button:hover { background-color: #1b5e20; }
         button:disabled { background-color: #a5d6a7; cursor: not-allowed; }
-        #recipeResult { background: #f9f9f9; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 5px solid #2e7d32; display: none; }
-        .lazy-box { display: flex; align-items: center; gap: 10px; margin: 10px 0; font-size: 14px; }
-        #recipeContent { font-size: 15px; }
+        #recipeResult { background: #fff; padding: 5px; border-radius: 8px; margin-top: 20px; display: none; }
+        .quick-box { display: flex; align-items: center; gap: 10px; margin: 15px 0; font-size: 14px; font-weight: 600; color: #2e7d32; }
+        /* Style for the 3 suggested recipes */
+        .recipe-option { border-left: 5px solid #2e7d32; padding-left: 15px; margin-bottom: 20px; }
+        .recipe-option h3 { color: #1b5e20; margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <h2>ECO CHEF 👨‍🍳</h2>
-        <p style="text-align: center; font-size: 14px;">Powered by Claude AI</p>
+        <p style="text-align: center; font-size: 12px; margin-top: 0; color: #666;">Zero-Waste Kitchen Assistant</p>
         
-        <input type="text" id="ing1" placeholder="Ingredient 1">
-        <input type="text" id="ing2" placeholder="Ingredient 2">
-        <input type="text" id="ing3" placeholder="Ingredient 3">
+        <input type="text" id="ing1" placeholder="Ingredient 1 (e.g. Stale Bread)">
+        <input type="text" id="ing2" placeholder="Ingredient 2 (e.g. Tomato)">
+        <input type="text" id="ing3" placeholder="Ingredient 3 (e.g. Cheese)">
         
-        <div class="lazy-box">
-            <input type="checkbox" id="lazyMode">
-            <label for="lazyMode">Enable "Quick Mode" (15 mins or less)</label>
+        <div class="quick-box">
+            <input type="checkbox" id="quickMode">
+            <label for="quickMode">Enable "Quick Mode" (15 mins or less)</label>
         </div>
 
-        <button id="getBtn" onclick="generateRecipe()">Get Recipe</button>
+        <button id="getBtn" onclick="generateRecipe()">Get Recipes</button>
 
         <div id="recipeResult">
-            <h3 id="recipeTitle" style="margin-top:0;">Chef's Suggestion:</h3>
             <div id="recipeContent"></div>
         </div>
     </div>
@@ -45,7 +46,7 @@
             const i1 = document.getElementById('ing1').value;
             const i2 = document.getElementById('ing2').value;
             const i3 = document.getElementById('ing3').value;
-            const isLazy = document.getElementById('lazyMode').checked;
+            const isQuick = document.getElementById('quickMode').checked;
             
             const resultDiv = document.getElementById('recipeResult');
             const contentDiv = document.getElementById('recipeContent');
@@ -56,10 +57,10 @@
                 return;
             }
 
-            btn.innerText = "Chef is Cooking...";
+            btn.innerText = "Chef is thinking...";
             btn.disabled = true;
             resultDiv.style.display = "block";
-            contentDiv.innerHTML = "<i>Claude is creating your recipe...</i>";
+            contentDiv.innerHTML = "<center><i>Preparing 3 unique suggestions...</i></center>";
 
             try {
                 const response = await fetch('/api/generate', {
@@ -67,23 +68,20 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ 
                         ingredients: `${i1}, ${i2}, ${i3}`, 
-                        isLazy: isLazy 
+                        isQuick: isQuick // Renamed from isLazy to match your wording
                     })
                 });
 
                 const data = await response.json();
                 
-                if (data.error) {
-                    throw new Error(data.error);
-                }
+                if (data.error) throw new Error(data.error);
 
-                // Display the text returned from our backend
                 contentDiv.innerHTML = data.text;
 
             } catch (error) {
-                contentDiv.innerHTML = `<span style='color:red;'>Error: ${error.message}. Check Vercel Environment Variables.</span>`;
+                contentDiv.innerHTML = `<span style='color:red;'>Error: ${error.message}</span>`;
             } finally {
-                btn.innerText = "Get Recipe";
+                btn.innerText = "Get Recipes";
                 btn.disabled = false;
             }
         }
