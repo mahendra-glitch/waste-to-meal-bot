@@ -5,44 +5,47 @@ export default async function handler(req, res) {
         const data = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
         const { ingredients, isLazy } = data;
         
-        const GEMINI_KEY = process.env.GEMINI_API_KEY;
+        // Ensure your Vercel Environment Variable is named CLAUDE_API_KEY
+        const CLAUDE_KEY = process.env.CLAUDE_API_KEY;
 
-        if (!GEMINI_KEY) {
-            return res.status(500).json({ error: "Gemini API Key missing in Vercel Settings" });
+        if (!CLAUDE_KEY) {
+            return res.status(500).json({ error: "Claude API Key missing in Vercel Settings" });
         }
 
-        // Switching to v1beta, which has the widest support for Flash models
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
-
-        const response = await fetch(url, {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'x-api-key': CLAUDE_KEY,
+                'anthropic-version': '2023-06-01', 
+                'content-type': 'application/json'
+            },
             body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: `You are a professional zero-waste chef for "Eco Chef". 
+                model: 'claude-3-5-sonnet-20240620',
+                max_tokens: 1024,
+                messages: [
+                    {
+                        role: 'user',
+                        content: `You are a professional zero-waste chef for "Eco Chef". 
                         Create a recipe using only: ${ingredients}. 
                         ${isLazy ? "The recipe MUST be 'Lazy Mode': under 15 minutes." : ""} 
                         Return clean HTML: <h3>Title</h3><br><b>Ingredients:</b><ul><li>item</li></ul><b>Steps:</b><ol><li>step</li></ol>`
-                    }]
-                }]
+                    }
+                ]
             })
         });
 
         const result = await response.json();
 
-        // Improved error catching to see exactly what Google says
+        // If Anthropic returns an error (like invalid key), pass it to the frontend
         if (result.error) {
-            console.error("Google API Error:", result.error);
-            return res.status(400).json({ error: result.error.message });
+            return res.status(response.status).json({ 
+                error: result.error.message, 
+                type: result.error.type 
+            });
         }
 
-        if (!result.candidates || result.candidates.length === 0) {
-            return res.status(500).json({ error: "No recipe generated. Check ingredient safety." });
-        }
-
-        const recipeText = result.candidates[0].content.parts[0].text;
-        return res.status(200).json({ text: recipeText });
+        // Return the text content
+        return res.status(200).json({ text: result.content[0].text });
 
     } catch (error) {
         return res.status(500).json({ error: "Server Error", message: error.message });
