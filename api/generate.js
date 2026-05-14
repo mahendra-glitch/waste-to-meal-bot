@@ -3,15 +3,9 @@ export default async function handler(req, res) {
 
     try {
         const data = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-        // Logic: Accept either 'isQuick' or 'isLazy' to prevent breaking changes
-        const isQuickMode = data.isQuick || data.isLazy; 
-        const { ingredients } = data;
+        const { ingredients, isQuick } = data;
         
         const CLAUDE_KEY = process.env.CLAUDE_API_KEY;
-
-        if (!CLAUDE_KEY) {
-            return res.status(500).json({ error: "API Key missing in Vercel" });
-        }
 
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
@@ -21,38 +15,20 @@ export default async function handler(req, res) {
                 'content-type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'claude-sonnet-4-6', 
+                model: 'claude-4-6-sonnet-latest', 
                 max_tokens: 2500, 
                 messages: [
                     {
                         role: 'user',
-                        content: `You are the executive chef for "Eco Chef". 
-                        Based on these ingredients: ${ingredients}, provide 3 unique zero-waste recipe options for variety.
-                        
-                        ${isQuickMode ? "CRITICAL: 'Quick Mode' is ACTIVE. All 3 recipes MUST be prepared and cooked in under 15 minutes." : "Provide a variety of cooking styles and times."} 
-                        
-                        Format each recipe clearly in HTML using this structure:
-                        <div class="recipe-option">
-                          <h3>[Recipe Name]</h3>
-                          <p><b>⏱️ Time:</b> [Estimated Minutes]</p>
-                          <b>Ingredients:</b><ul><li>item</li></ul>
-                          <b>Instructions:</b><ol><li>step</li></ol>
-                        </div>
-                        <hr>`
+                        content: `You are the executive chef for "Eco Chef". The user has: ${ingredients}. Provide 3 unique zero-waste recipe options. ${isQuick ? "All 3 MUST be under 15 minutes." : ""} Format each in a <div class="recipe-option"> with <h3>, <ul>, and <ol> tags.`
                     }
                 ]
             })
         });
 
         const result = await response.json();
-
-        if (result.error) {
-            return res.status(400).json({ error: result.error.message });
-        }
-
         return res.status(200).json({ text: result.content[0].text });
-
     } catch (error) {
-        return res.status(500).json({ error: "Server Error", message: error.message });
+        return res.status(500).json({ error: error.message });
     }
 }
