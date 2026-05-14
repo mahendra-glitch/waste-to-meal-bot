@@ -11,8 +11,8 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: "Gemini API Key missing in Vercel Settings" });
         }
 
-        // Updated to v1 (Stable) and specific model name
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`;
+        // Switching to v1beta, which has the widest support for Flash models
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
 
         const response = await fetch(url, {
             method: 'POST',
@@ -31,9 +31,14 @@ export default async function handler(req, res) {
 
         const result = await response.json();
 
+        // Improved error catching to see exactly what Google says
         if (result.error) {
-            // This will help you see the specific Google error in your browser console
-            return res.status(response.status).json({ error: result.error.message });
+            console.error("Google API Error:", result.error);
+            return res.status(400).json({ error: result.error.message });
+        }
+
+        if (!result.candidates || result.candidates.length === 0) {
+            return res.status(500).json({ error: "No recipe generated. Check ingredient safety." });
         }
 
         const recipeText = result.candidates[0].content.parts[0].text;
