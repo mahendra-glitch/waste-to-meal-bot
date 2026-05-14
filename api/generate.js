@@ -3,7 +3,9 @@ export default async function handler(req, res) {
 
     try {
         const data = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-        const { ingredients, isQuick } = data;
+        // Logic: Accept either 'isQuick' or 'isLazy' to prevent breaking changes
+        const isQuickMode = data.isQuick || data.isLazy; 
+        const { ingredients } = data;
         
         const CLAUDE_KEY = process.env.CLAUDE_API_KEY;
 
@@ -19,20 +21,20 @@ export default async function handler(req, res) {
                 'content-type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'claude-sonnet-4-6', // Updated to the official 2026 stable ID
-                max_tokens: 2500, // Increased to fit 3 recipes
+                model: 'claude-4-6-sonnet-latest', 
+                max_tokens: 2500, 
                 messages: [
                     {
                         role: 'user',
                         content: `You are the executive chef for "Eco Chef". 
-                        Based on these ingredients: ${ingredients}, provide 3 unique zero-waste recipe options.
+                        Based on these ingredients: ${ingredients}, provide 3 unique zero-waste recipe options for variety.
                         
-                        ${isQuick ? "CRITICAL: 'QuickMode' is ACTIVE. All 3 recipes MUST be prepared and cooked in under 15 minutes." : "Provide a variety of cooking styles."} 
+                        ${isQuickMode ? "CRITICAL: 'Quick Mode' is ACTIVE. All 3 recipes MUST be prepared and cooked in under 15 minutes." : "Provide a variety of cooking styles and times."} 
                         
                         Format each recipe clearly in HTML using this structure:
                         <div class="recipe-option">
                           <h3>[Recipe Name]</h3>
-                          <p><b>Time:</b> [Estimated Minutes]</p>
+                          <p><b>⏱️ Time:</b> [Estimated Minutes]</p>
                           <b>Ingredients:</b><ul><li>item</li></ul>
                           <b>Instructions:</b><ol><li>step</li></ol>
                         </div>
