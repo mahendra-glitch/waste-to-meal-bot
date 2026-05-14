@@ -5,32 +5,30 @@ export default async function handler(req, res) {
         const data = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
         const { ingredients, isLazy } = data;
         
-        // IMPORTANT: Make sure your Vercel Environment Variable is named CLAUDE_API_KEY
-        const CLAUDE_KEY = process.env.CLAUDE_API_KEY;
+        // IMPORTANT: Rename your Vercel Environment Variable to GEMINI_API_KEY
+        const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
-        if (!CLAUDE_KEY) {
-            return res.status(500).json({ error: "Claude API Key missing in Vercel Settings" });
+        if (!GEMINI_KEY) {
+            return res.status(500).json({ error: "Gemini API Key missing in Vercel Settings" });
         }
 
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
+        // Using Gemini 1.5 Flash (Fast, reliable, and high free tier)
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'x-api-key': CLAUDE_KEY,
-                'anthropic-version': '2023-06-01', 
-                'content-type': 'application/json'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'claude-3-5-sonnet-20240620',
-                max_tokens: 1024,
-                messages: [
-                    {
-                        role: 'user',
-                        content: `You are a professional zero-waste chef. 
+                contents: [{
+                    parts: [{
+                        text: `You are a professional zero-waste chef for the project "Eco Chef". 
                         Create a recipe using only these ingredients: ${ingredients}. 
                         ${isLazy ? "The recipe MUST be 'Lazy Mode': under 15 minutes." : ""} 
                         Return the response in clean HTML: <h3>Recipe Title</h3><br><b>Ingredients:</b><ul><li>item</li></ul><b>Steps:</b><ol><li>step</li></ol>`
-                    }
-                ]
+                    }]
+                }]
             })
         });
 
@@ -40,8 +38,10 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: result.error.message });
         }
 
-        // Send only the text content back to the frontend
-        return res.status(200).json({ text: result.content[0].text });
+        // Gemini response structure: candidates[0].content.parts[0].text
+        const recipeText = result.candidates[0].content.parts[0].text;
+        
+        return res.status(200).json({ text: recipeText });
 
     } catch (error) {
         return res.status(500).json({ error: "Server Error", message: error.message });
